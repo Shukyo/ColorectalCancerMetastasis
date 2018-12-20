@@ -14,3 +14,65 @@ do
   dna_analysis.sh -n  $name  -t  10  -s reCal -e varCall  -i ${name}/${name}.sorted.dedup.rg.bam
 done
 ```
+2. copy __"filter.sh"__to mutect2/filteredVcf  directory
+
+for i in ../rawVcf/*.vcf.gz
+do
+  name=`basename $i .vcf.gz`
+  ./filter.sh $name $i ../../contamination/$name.calculatecontamination.table  ../../ffpe/$name.artifact.pre_adapter_detail_metrics
+done
+
+
+for  i in BXY  DDY  DWY  LDS  WLF  YHD
+do
+  cd $i
+  for j in *.vcf; do convert2annovar.pl --format vcf4old  $j 2>/dev/null |cut -f 1-5  >>$i.raw.bed; done
+    sort -V $i.raw.bed|uniq >$i.sorted.uniq.bed
+    cd ..
+  done
+
+```shell
+for k in ../../bamFiles/BXY*.bam
+do
+    nohup samtools mpileup -f /database/ref/hg19.fa -q 1 -l BXY.sorted.uniq.bed  $i 2>/dev/null >`basename $i .sorted.dedup.rg.recal.bam`.mpileup &
+done
+```
+```shell
+for i in */*.mpileup
+do
+    nohup java -jar /software/VarScan.v2.3.9.jar mpileup2cns $i  --min-coverage  1  --min-reads2  0  --p-value  1  --min-var-freq  0  --strand-filter  0 2>&1 >`dirname $i`/`basename $i .mpileup`.retrieved.vcf &
+done
+```
+
+./merge_file_from_mpileup2cns.pl *.retrieved.vcf
+
+
+
+ for i in */*.somatic_hardfiltered.clean.vcf; do nohup gatk HaplotypeCaller -L `dirname $i`/`dirname $i`.sorted.uniq.bed --reference /database/ref/hg19.fa  --input ../bamFiles/`basename $i .somatic_hardfiltered.clean.vcf`.sorted.dedup.rg.recal.bam   --output `dirname $i`/`basename $i .somatic_hardfiltered.clean.vcf`.g.vcf   -ERC GVCF   --output-mode EMIT_ALL_SITES >log.`basename  $i .somatic_hardfiltered.clean.vcf` & done
+
+for i in BXY  DDY  DWY  LDS  WLF  YHD
+do
+   for i in $i/*.g.vcf;do echo " -V "$i;done|xargs  gatk CombineGVCFs -R /database/ref/hg19.fa  -O $i/${i}.g.vcf.gz
+done
+
+
+for i in BXY  DDY  DWY  LDS  WLF  YHD
+do
+    gatk GenotypeGVCFs -L ${i}/${i}.sorted.uniq.bed  -R /database/ref/hg19.fa -V ${i}/${i}.g.vcf.gz  -O ${i}/${i}.jointlycall.vcf.gz
+done
+
+
+for i in  DDY  DWY  LDS  WLF  YHD
+do
+  #table_annovar.pl ${i}/${i}.jointlycall.vcf.gz /database/annotation/annovar/humandb/ -buildver hg19 -out ${i}/${i} -remove -protocol refGene,cytoBand -operation g,r -nastring . -vcfinput
+  #gatk VariantsToTable -V ${i}/${i}.hg19_multianno.vcf  -F cytoBand -F POS -F REF -F ALT -F Func.refGene -F Gene.refGene -GF AD  -O ${i}/${i}.table
+  #awk 'BEGIN{OFS="\t"} {if(NR==1){printf "Chromosome\tPosition\tChange\tGene";for(i=7;i<=NF;i++){split($i,m,".");printf "\t"m[1]}printf "\n"}else{  if ($1 != "." && ($5 ~/^exonic$/ || $5 ~/^splicing$/ ) && $NF ~ /,0$/ ){printf "chr"$1"\t"$2"\t"$3">"$4"\t"$6;for(i=7;i<=NF;i++){split($i,m,",");printf "\t"m[2]}printf "\n"}}}' ${i}/${i}.table  >${i}/${i}.mutatedRead.txt
+  #awk 'BEGIN{OFS="\t"} {if(NR==1){printf "Chromosome\tPosition\tChange\tGene";for(i=7;i<=NF;i++){split($i,m,".");printf "\t"m[1]}printf "\n"}else{  if ($1 != "." && ($5 ~/^exonic$/ || $5 ~/^splicing$/ ) && $NF ~ /,0$/ ){printf "chr"$1"\t"$2"\t"$3">"$4"\t"$6;for(i=7;i<=NF;i++){split($i,m,",");printf "\t"(m[1]+m[2])}printf "\n"}}}' ${i}/${i}.table  >${i}/${i}.coverage.txt
+  cp $i/$i.coverage.txt ~/treeomics/src/input/$i/
+  cp $i/$i.mutatedRead.txt ~/treeomics/src/input/$i/
+done
+
+
+
+awk 'BEGIN{OFS="\t"} {if(NR==1){printf "Chromosome\tPosition\tChange\tGene";for(i=7;i<=NF;i++){split($i,m,".");printf "\t"m[1]}printf "\n"}else{  if ($1 != "." && ($5 ~/^exonic$/ || $5 ~/^splicing$/ ) && $NF ~ /,0$/ ){printf "chr"$1"\t"$2"\t"$3">"$4"\t"$6;for(i=7;i<=NF;i++){split($i,m,",");printf "\t"m[2]}printf "\n"}}}' BXY.table  >BXY.mutatedRead.txt
+awk 'BEGIN{OFS="\t"} {if(NR==1){printf "Chromosome\tPosition\tChange\tGene";for(i=7;i<=NF;i++){split($i,m,".");printf "\t"m[1]}printf "\n"}else{  if ($1 != "." && ($5 ~/^exonic$/ || $5 ~/^splicing$/ ) && $NF ~ /,0$/ ){printf "chr"$1"\t"$2"\t"$3">"$4"\t"$6;for(i=7;i<=NF;i++){split($i,m,",");printf "\t"(m[1]+m[2])}printf "\n"}}}' BXY.table  >BXY.coverage.txt
