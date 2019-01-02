@@ -1,4 +1,4 @@
-# ColorectalCancerMetastasis
+                             # ColorectalCancerMetastasis
 ---
 Scripts for processing WES data from Colorectal Cancer Metastasis
 
@@ -48,7 +48,9 @@ done
 
 
 
- for i in */*.somatic_hardfiltered.clean.vcf; do nohup gatk HaplotypeCaller -L `dirname $i`/`dirname $i`.sorted.uniq.bed --reference /database/ref/hg19.fa  --input ../bamFiles/`basename $i .somatic_hardfiltered.clean.vcf`.sorted.dedup.rg.recal.bam   --output `dirname $i`/`basename $i .somatic_hardfiltered.clean.vcf`.g.vcf   -ERC GVCF   --output-mode EMIT_ALL_SITES >log.`basename  $i .somatic_hardfiltered.clean.vcf` & done
+ for i in */*.somatic_hardfiltered.clean.vcf; do
+ nohup gatk HaplotypeCaller -L `dirname $i`/`dirname $i`.sorted.uniq.bed --reference /database/ref/hg19.fa  --input ../bamFiles/`basename $i .somatic_hardfiltered.clean.vcf`.sorted.dedup.rg.recal.bam   --output `dirname $i`/`basename $i .somatic_hardfiltered.clean.vcf`.g.vcf   -ERC GVCF   --output-mode EMIT_ALL_SITES >log.`basename  $i .somatic_hardfiltered.clean.vcf` &
+ done
 
 for i in BXY  DDY  DWY  LDS  WLF  YHD
 do
@@ -72,7 +74,12 @@ do
   cp $i/$i.mutatedRead.txt ~/treeomics/src/input/$i/
 done
 
+for i in DDY  DWY  LDS  WLF  YHD
+do
+awk 'BEGIN{OFS="\t"}{ if(NR==1){for(i=7;i<=NF;i++){split($i,n,".");f[i]=n[1];printf "mutation_id\tref_counts\tvar_counts\tnormal_cn\tminor_cn\tmajor_cn" >"f[i].txt"}}  else{  for(i=7;i<=NF;i++){   split($i,m,",");   if($1 != "." && ($5 ~/^exonic$/ || $5 ~/^splicing$/ && length(m)==2  && $NF ~ /,0$/ ){   printf "$1:$2:$3:$4\tm[1]\tm[2]"  >>"f[i].txt" }}  }  }' BXY.table |less
+done
 
+printf "$1:$2:$4:$5\tm[1]\t[m2]"
 
 awk 'BEGIN{OFS="\t"} {if(NR==1){printf "Chromosome\tPosition\tChange\tGene";for(i=7;i<=NF;i++){split($i,m,".");printf "\t"m[1]}printf "\n"}else{  if ($1 != "." && ($5 ~/^exonic$/ || $5 ~/^splicing$/ ) && $NF ~ /,0$/ ){printf "chr"$1"\t"$2"\t"$3">"$4"\t"$6;for(i=7;i<=NF;i++){split($i,m,",");printf "\t"m[2]}printf "\n"}}}' BXY.table  >BXY.mutatedRead.txt
 awk 'BEGIN{OFS="\t"} {if(NR==1){printf "Chromosome\tPosition\tChange\tGene";for(i=7;i<=NF;i++){split($i,m,".");printf "\t"m[1]}printf "\n"}else{  if ($1 != "." && ($5 ~/^exonic$/ || $5 ~/^splicing$/ ) && $NF ~ /,0$/ ){printf "chr"$1"\t"$2"\t"$3">"$4"\t"$6;for(i=7;i<=NF;i++){split($i,m,",");printf "\t"(m[1]+m[2])}printf "\n"}}}' BXY.table  >BXY.coverage.txt
