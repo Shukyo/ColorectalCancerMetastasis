@@ -23,5 +23,5 @@ zcat $1.somatic_twicefiltered.vcf.gz|awk '/^#/ || $7~/PASS/' - >$1.somatic_twice
 
 
 
-## Depth >=3 ; Allele Frquency >= 10% ; Variants on both strand 
+## Depth >=3 ; Allele Frquency >= 10% ; Variants on both strand
 awk -F "\t" '{split($10,f,":");split(f[5],m,",");split(f[6],n,",");if(/^#/ || (f[4]>=3 && f[3] >=0.1 && m[2] > 0 && n[2] > 0 )){print }}'  $1.somatic_twicefiltered.clean.vcf >$1.somatic_hardfiltered.clean.vcf
